@@ -443,7 +443,7 @@ data SwaggerType t where
   SwaggerInteger  :: SwaggerType t
   SwaggerBoolean  :: SwaggerType t
   SwaggerArray    :: SwaggerType t
-  SwaggerFile     :: SwaggerType 'SwaggerKindParamOtherSchema
+  SwaggerFile     :: SwaggerType t
   SwaggerNull     :: SwaggerType 'SwaggerKindSchema
   SwaggerObject   :: SwaggerType 'SwaggerKindSchema
   SwaggerOneOf    :: [SwaggerType 'SwaggerKindSchema] -> SwaggerType 'SwaggerKindSchema
@@ -459,7 +459,7 @@ swaggerTypeDataType :: {- Data (SwaggerType t) => -} SwaggerType t -> DataType
 swaggerTypeDataType _ = mkDataType "Data.Swagger.SwaggerType" swaggerTypeConstrs
 
 swaggerCommonTypes :: [SwaggerType k]
-swaggerCommonTypes = [SwaggerString, SwaggerNumber, SwaggerInteger, SwaggerBoolean, SwaggerArray]
+swaggerCommonTypes = [SwaggerString, SwaggerNumber, SwaggerInteger, SwaggerBoolean, SwaggerArray, SwaggerFile]
 
 swaggerParamTypes :: [SwaggerType 'SwaggerKindParamOtherSchema]
 swaggerParamTypes = swaggerCommonTypes ++ [SwaggerFile]
@@ -469,7 +469,7 @@ swaggerSchemaTypes = swaggerCommonTypes ++ [error "SwaggerFile is invalid Swagge
 
 swaggerTypeConstrs :: [Constr]
 swaggerTypeConstrs = map swaggerTypeConstr (swaggerCommonTypes :: [SwaggerType 'SwaggerKindSchema])
-  ++ [swaggerTypeConstr SwaggerFile, swaggerTypeConstr SwaggerNull, swaggerTypeConstr SwaggerObject]
+  ++ [swaggerTypeConstr SwaggerNull, swaggerTypeConstr SwaggerObject]
 
 instance Typeable t => Data (SwaggerType ('SwaggerKindNormal t)) where
   gunfold = gunfoldEnum "SwaggerType" swaggerCommonTypes
@@ -1351,9 +1351,8 @@ instance FromJSON Xml where
 
 instance FromJSON (SwaggerType 'SwaggerKindSchema) where
   parseJSON value =
-      parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerNull, SwaggerObject] value
+      parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerFile, SwaggerNull, SwaggerObject] value
       <|> (SwaggerOneOf <$> parseJSONList value)
-
 
 instance FromJSON (SwaggerType 'SwaggerKindParamOtherSchema) where
   parseJSON = parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerFile]
