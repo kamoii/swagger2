@@ -35,6 +35,7 @@ import           Data.Scientific          (Scientific)
 import           Data.String              (IsString(..))
 import           Data.Text                (Text)
 import qualified Data.Text                as Text
+import qualified Data.Vector              as Vector
 import           GHC.Generics             (Generic)
 import           Network.Socket           (HostName, PortNumber)
 import           Network.HTTP.Media       (MediaType)
@@ -445,6 +446,7 @@ data SwaggerType t where
   SwaggerFile     :: SwaggerType 'SwaggerKindParamOtherSchema
   SwaggerNull     :: SwaggerType 'SwaggerKindSchema
   SwaggerObject   :: SwaggerType 'SwaggerKindSchema
+  SwaggerOneOf    :: [SwaggerType 'SwaggerKindSchema] -> SwaggerType 'SwaggerKindSchema
   deriving (Typeable)
 
 deriving instance Eq (SwaggerType t)
@@ -1170,14 +1172,15 @@ instance ToJSON (Referenced Param)    where toJSON = referencedToJSON "#/paramet
 instance ToJSON (Referenced Response) where toJSON = referencedToJSON "#/responses/"
 
 instance ToJSON (SwaggerType t) where
-  toJSON SwaggerArray   = "array"
-  toJSON SwaggerString  = "string"
-  toJSON SwaggerInteger = "integer"
-  toJSON SwaggerNumber  = "number"
-  toJSON SwaggerBoolean = "boolean"
-  toJSON SwaggerFile    = "file"
-  toJSON SwaggerNull    = "null"
-  toJSON SwaggerObject  = "object"
+  toJSON SwaggerArray    = "array"
+  toJSON SwaggerString   = "string"
+  toJSON SwaggerInteger  = "integer"
+  toJSON SwaggerNumber   = "number"
+  toJSON SwaggerBoolean  = "boolean"
+  toJSON SwaggerFile     = "file"
+  toJSON SwaggerNull     = "null"
+  toJSON SwaggerObject   = "object"
+  toJSON (SwaggerOneOf ts) = Array . Vector.fromList $ map toJSON ts
 
 instance ToJSON (CollectionFormat t) where
   toJSON CollectionCSV   = "csv"
@@ -1347,7 +1350,10 @@ instance FromJSON Xml where
   parseJSON = genericParseJSON (jsonPrefix "xml")
 
 instance FromJSON (SwaggerType 'SwaggerKindSchema) where
-  parseJSON = parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerNull, SwaggerObject]
+  parseJSON value =
+      parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerNull, SwaggerObject] value
+      <|> (SwaggerOneOf <$> parseJSONList value)
+
 
 instance FromJSON (SwaggerType 'SwaggerKindParamOtherSchema) where
   parseJSON = parseOneOf [SwaggerString, SwaggerInteger, SwaggerNumber, SwaggerBoolean, SwaggerArray, SwaggerFile]
